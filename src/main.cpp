@@ -546,7 +546,7 @@ void loop() {
     if (!isnan(h) && !isnan(t)) {
       lastHum = h;
       lastTemp = t;
-      // Sensor data is uploaded in periodic Firebase push section
+      // Sensor data is uploaded in the periodic Firebase push section below (FB_INTERVAL)
     }
   }
 
