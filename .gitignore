@@ -6,3 +6,6 @@
 
 # Firebase secrets (DO NOT COMMIT)
 include/secrets.h
+
+# CodeQL artifacts
+_codeql_detected_source_root
