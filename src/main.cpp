@@ -83,7 +83,9 @@ enum MoveReason {
   REASON_BRIGHT,
   REASON_DARK,
   REASON_RAIN,
-  REASON_RAIN_CLEARED
+  REASON_RAIN_CLEARED,
+  REASON_MANUAL_OUT,
+  REASON_MANUAL_IN
 };
 
 // ----- MODE & COMMAND TỪ WEB -----
@@ -266,15 +268,6 @@ void moveIn(MoveReason reason) {
   }
 }
 
-// ================== UPLOAD SENSOR TO FIREBASE ==================
-
-void uploadSensor() {
-  if (!firebaseReady) return;
-
-  Firebase.RTDB.setFloat(&fbdo, "/system/sensor/temperature", lastTemp);
-  Firebase.RTDB.setFloat(&fbdo, "/system/sensor/humidity", lastHum);
-}
-
 // ================== UPLOAD STATE + LOG HISTORY ==================
 
 void uploadState(const String &reason) {
@@ -381,17 +374,19 @@ void setup() {
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
 
-  auth.user.email = "";
-  auth.user.password = "";
   config.token_status_callback = tokenStatusCallback;
-
-  // FIX TOKEN ERROR -127
-  config.signer.test_mode = true;
-  config.signer.tokens.legacy_token = "";
 
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
-  firebaseReady = true;
+
+  // Sign in anonymously
+  if (Firebase.signUp(&config, &auth, "", "")) {
+    Serial.println("Firebase Anonymous Auth OK");
+    firebaseReady = true;
+  } else {
+    Serial.printf("Firebase Auth Error: %s\n", config.signer.signupError.message.c_str());
+    firebaseReady = false;
+  }
 
   Serial.println("Firebase ready.");
 
@@ -483,12 +478,12 @@ void loop() {
           // CHỈ xử lý lệnh tay khi đang MANUAL
           if (cmd == "out" && !isOut) {
             Serial.println("-> Manual: PHOI RA");
-            moveOut(REASON_BRIGHT);
+            moveOut(REASON_MANUAL_OUT);
             isOut = true;
             uploadState("manual_out");
           } else if (cmd == "in" && isOut) {
             Serial.println("-> Manual: THU VAO");
-            moveIn(REASON_DARK);
+            moveIn(REASON_MANUAL_IN);
             isOut = false;
             uploadState("manual_in");
           } else if (cmd == "stop") {
@@ -551,7 +546,7 @@ void loop() {
     if (!isnan(h) && !isnan(t)) {
       lastHum = h;
       lastTemp = t;
-      uploadSensor();
+      // Sensor data is uploaded in the periodic Firebase push section below (FB_INTERVAL)
     }
   }
 
